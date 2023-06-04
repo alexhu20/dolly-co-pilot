@@ -1,0 +1,34 @@
+﻿question,context,answers
+location-ne-prd-exceptions-failures-logalertv2,"Seeing error messages: Failed to update document in cosmos with precondition statusCode=PreconditionFailed
+and Response status code does not indicate success: PreconditionFailed (412). Learn more: https://aka.ms/CosmosDB/sql/errors/precondition-failed","{
+  ""text"": [
+    ""Cosmos PreconditionFailed""
+  ],
+  ""answer_start"": [
+    88
+  ]
+}"
+location-we-prd-exceptions-failures-logalertv2,"Seeing error messages: Failed to update document in cosmos with precondition statusCode=PreconditionFailed
+and Response status code does not indicate success: PreconditionFailed (412). Learn more: https://aka.ms/CosmosDB/sql/errors/precondition-failed","{
+  ""text"": [
+    ""Cosmos PreconditionFailed""
+  ],
+  ""answer_start"": [
+    88
+  ]
+}"
+location-we-prd-exceptions-failures-logalertv2,"Seeing error messages: Failed to update document in cosmos with precondition statusCode=PreconditionFailed
+and Response status code does not indicate success: PreconditionFailed (412). Learn more: https://aka.ms/CosmosDB/sql/errors/precondition-failed","{
+  ""text"": [
+    ""Cosmos PreconditionFailed""
+  ],
+  ""answer_start"": [
+    88
+  ]
+}"
+acloud-weu-stg-plt-prd-srv-ne-01-b-aks-node-memory,,"{""text"":[""check stg-plt-prd-srv-ne-01-b-ask node memory usage. Usually individual pod or controller used higher percentage of memory of total allocated memory for the node""],""answer_start"":[0]}"
+organization-management-jaea-prd-async-delete-org-failures,"Seeing error message: The database operation was expected to affect 1 row(s), but actually affected 0 row(s); data may have been modified or deleted since entities were loaded.","{ ""text"": [""The database operation was expected to affect 1 row(s), but actually affected 0 row(s) ""], ""answer_start"": [22]}"
+acloud-auea-01-plt-prd-acct-auea-01-db-db-failedconnections-alert-srev2,Scheduled DB maintenance cause DB connection to drop at 2023-02-16 02:33PST,"{ ""text"": [""Scheduled DB maintenance""], ""answer_start"": [0]}"
+organization-management-ne2-prd-async-delete-org-failures-srev2,"The database operation was expected to affect 1 row(s), but actually affected 0 row(s); data may have been modified or deleted since entities were loaded.","{ ""text"": [""The database operation was expected to affect 1 row(s), but actually affected 0 row(s) ""], ""answer_start"": [22]}"
+Integration Service does not load for the Production Tenant but loads for the Development Tenant.,"The customer experienced an issue with their Integration Service in their Production tenant. It failed to load due to a failure in URL redirection from /login to /main, which was not an issue in the Development tenant. This was observed across all browsers and users within the same Cloud Organization. The support engineer and developers noted that the 'connectorbuilder', 'provisioning', and 'elements' services were enabled for the Development tenant, but not for the Production tenant. The team identified two issues from the HAR file and transaction data: (1) The Connection Service returned a 404 error for this account profile, indicating it could not find this tenant, and (2) a request related to the 'elements' service returned a 404 error because this service was disabled for the Production tenant. The developers performed a data correction for the Production tenant, enabling the missing services ('connectorbuilder', 'provisioning', and 'elements'). After this correction, the Connection Service was no longer returning a 404 error, and the URL redirection issue was resolved. Relevant ticket: https://uipath.atlassian.net/browse/SRE-122845","{ ""text"": [""(1) The Connection Service returned a 404 error for this account profile, indicating it could not find this tenant, and (2) a request related to the 'elements' service returned a 404 error because this service was disabled for the Production tenant""], ""answer_start"": [564, 684]}"
+acloud-weu-stg-plt-stg-srv-eus-01-b-aks-node-memory,,"{""text"":[""check stg-plt-stg-srv-eus-01-b-ask node memory usage. Usually individual pod or controller used higher percentage of memory of total allocated memory for the node""],""answer_start"":[0]}"

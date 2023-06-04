@@ -7,3 +7,6 @@ __pycache__/
 htmlcov/
 .pytest_cache/
 .coverage
+.trained_model_dolly/
+.trained_model/
+.DS_Store

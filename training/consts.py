@@ -1,23 +1,27 @@
-DEFAULT_INPUT_MODEL = "EleutherAI/pythia-6.9b"
-SUGGESTED_INPUT_MODELS = [
-    "EleutherAI/pythia-2.8b",
-    "EleutherAI/pythia-6.9b",
-    "EleutherAI/pythia-12b",
-    "EleutherAI/gpt-j-6B",
-    "databricks/dolly-v2-3b",
-    "databricks/dolly-v2-7b",
-    "databricks/dolly-v2-12b"
-]
-DEFAULT_TRAINING_DATASET = "databricks/databricks-dolly-15k"
+import os
+# DEFAULT_TRAINING_DATASET_FILE = os.environ['DATASET_FILE_PATH']
+# DEFAULT_TRAINING_DATASET = "tatsu-lab/alpaca"
+# DEFAULT_INPUT_MODEL = os.environ['MODEL_PATH']
+END_KEY = "### End"
+INSTRUCTION_KEY = "### Instruction:"
 INTRO_BLURB = (
     "Below is an instruction that describes a task. Write a response that appropriately completes the request."
 )
-INSTRUCTION_KEY = "### Instruction:"
+
+DEFAULT_SEED = 42
+
 INPUT_KEY = "Input:"
 RESPONSE_KEY = "### Response:"
 END_KEY = "### End"
 RESPONSE_KEY_NL = f"{RESPONSE_KEY}\n"
-DEFAULT_SEED = 42
+PROMPT_FORMAT = """%s
+%s
+{instruction}
+%s""" % (
+    "Below is an instruction that describes a task. Write a response that appropriately completes the request.",
+    INSTRUCTION_KEY,
+    RESPONSE_KEY_NL,
+)
 
 # This is a training prompt that does not contain an input string.  The instruction by itself has enough information
 # to respond.  For example, the instruction might ask for the year a historic figure was born.

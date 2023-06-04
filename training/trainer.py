@@ -14,8 +14,8 @@
 
 import logging
 from functools import partial
-from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
+import torch
 
 import click
 import numpy as np
@@ -33,16 +33,16 @@ from transformers import (
 from .consts import (
     DEFAULT_INPUT_MODEL,
     DEFAULT_SEED,
-    PROMPT_WITH_INPUT_FORMAT,
-    PROMPT_NO_INPUT_FORMAT,
+    DEFAULT_TRAINING_DATASET_FILE,
+    DEFAULT_TRAINING_DATASET,
     END_KEY,
     INSTRUCTION_KEY,
     RESPONSE_KEY_NL,
-    DEFAULT_TRAINING_DATASET,
+    PROMPT_WITH_INPUT_FORMAT,
+    PROMPT_NO_INPUT_FORMAT,
 )
 
 logger = logging.getLogger(__name__)
-ROOT_PATH = Path(__file__).parent.parent
 
 
 class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
@@ -85,10 +85,11 @@ def preprocess_batch(batch: Dict[str, List], tokenizer: AutoTokenizer, max_lengt
     )
 
 
-def load_training_dataset(path_or_dataset: str = DEFAULT_TRAINING_DATASET) -> Dataset:
-    logger.info(f"Loading dataset from {path_or_dataset}")
-    dataset = load_dataset(path_or_dataset)["train"]
-    logger.info("Found %d rows", dataset.num_rows)
+def load_training_dataset(training_data_id: str = DEFAULT_TRAINING_DATASET, split: str = "train") -> Dataset:
+    logger.info(f"Loading {training_data_id} dataset")
+    logger.info(f"training dataset location {DEFAULT_TRAINING_DATASET_FILE}")
+    dataset = load_dataset("csv", data_files=DEFAULT_TRAINING_DATASET_FILE)["train"]
+    logger.info(f"Found {dataset.num_rows} rows")
 
     def _add_text(rec):
         instruction = rec["instruction"]
@@ -145,18 +146,16 @@ def get_model_tokenizer(
     return model, tokenizer
 
 
-def preprocess_dataset(tokenizer: AutoTokenizer, max_length: int, seed=DEFAULT_SEED, training_dataset: str = DEFAULT_TRAINING_DATASET) -> Dataset:
+def preprocess_dataset(tokenizer: AutoTokenizer, max_length: int, seed=DEFAULT_SEED) -> Dataset:
     """Loads the training dataset and tokenizes it so it is ready for training.
-
     Args:
         tokenizer (AutoTokenizer): Tokenizer tied to the model.
         max_length (int): Maximum number of tokens to emit from tokenizer.
-
     Returns:
         Dataset: HuggingFace dataset
     """
 
-    dataset = load_training_dataset(training_dataset)
+    dataset = load_training_dataset()
 
     logger.info("Preprocessing dataset")
     _preprocessing_function = partial(preprocess_batch, max_length=max_length, tokenizer=tokenizer)
@@ -165,11 +164,6 @@ def preprocess_dataset(tokenizer: AutoTokenizer, max_length: int, seed=DEFAULT_S
         batched=True,
         remove_columns=["instruction", "context", "response", "text", "category"],
     )
-
-    # Make sure we don't have any truncated records, as this would mean the end keyword is missing.
-    logger.info("Processed dataset has %d rows", dataset.num_rows)
-    dataset = dataset.filter(lambda rec: len(rec["input_ids"]) < max_length)
-    logger.info("Processed dataset has %d rows after filtering for truncated records", dataset.num_rows)
 
     logger.info("Shuffling dataset")
     dataset = dataset.shuffle(seed=seed)
@@ -180,53 +174,32 @@ def preprocess_dataset(tokenizer: AutoTokenizer, max_length: int, seed=DEFAULT_S
 
 
 def train(
-    *,
-    input_model: str,
-    local_output_dir: str,
-    dbfs_output_dir: str,
-    epochs: int,
-    per_device_train_batch_size: int,
-    per_device_eval_batch_size: int,
-    lr: float,
-    seed: int,
-    deepspeed: str,
-    gradient_checkpointing: bool,
-    local_rank: str,
-    bf16: bool,
-    logging_steps: int,
-    save_steps: int,
-    eval_steps: int,
-    test_size: Union[float, int],
-    save_total_limit: int,
-    warmup_steps: int,
-    training_dataset: str = DEFAULT_TRAINING_DATASET,
+    local_output_dir,
+    dbfs_output_dir,
+    epochs,
+    per_device_train_batch_size,
+    per_device_eval_batch_size,
+    lr,
+    seed,
+    deepspeed,
+    gradient_checkpointing,
+    local_rank,
+    bf16,
+    test_size=0.1,
 ):
     set_seed(seed)
 
-    model, tokenizer = get_model_tokenizer(
-        pretrained_model_name_or_path=input_model, gradient_checkpointing=gradient_checkpointing
-    )
+    model, tokenizer = get_model_tokenizer(gradient_checkpointing=gradient_checkpointing)
 
-    # Use the same max length that the model supports.  Fall back to 1024 if the setting can't be found.
-    # The configuraton for the length can be stored under different names depending on the model.  Here we attempt
-    # a few possible names we've encountered.
+    # Use the same max length that the model supports.  Try a couple different keys in case a different
+    # model is used.  The default model uses n_positions.  If no config settings can be found just default
+    # to 1024 as this is probably supported by most models.
     conf = model.config
-    max_length = None
-    for length_setting in ["n_positions", "max_position_embeddings", "seq_length"]:
-        max_length = getattr(model.config, length_setting, None)
-        if max_length:
-            logger.info(f"Found max lenth: {max_length}")
-            break
-    if not max_length:
-        max_length = 1024
-        logger.info(f"Using default max length: {max_length}")
+    max_length: int = getattr(conf, "n_positions", getattr(conf, "seq_lenth", 1024))
 
-    processed_dataset = preprocess_dataset(tokenizer=tokenizer, max_length=max_length, seed=seed, training_dataset=training_dataset)
+    processed_dataset = preprocess_dataset(tokenizer=tokenizer, max_length=max_length, seed=seed)
 
     split_dataset = processed_dataset.train_test_split(test_size=test_size, seed=seed)
-
-    logger.info("Train data size: %d", split_dataset["train"].num_rows)
-    logger.info("Test data size: %d", split_dataset["test"].num_rows)
 
     data_collator = DataCollatorForCompletionOnlyLM(
         tokenizer=tokenizer, mlm=False, return_tensors="pt", pad_to_multiple_of=8
@@ -247,18 +220,17 @@ def train(
         gradient_checkpointing=gradient_checkpointing,
         logging_dir=f"{local_output_dir}/runs",
         logging_strategy="steps",
-        logging_steps=logging_steps,
+        logging_steps=10,
         evaluation_strategy="steps",
-        eval_steps=eval_steps,
+        eval_steps=100,
         save_strategy="steps",
-        save_steps=save_steps,
-        save_total_limit=save_total_limit,
-        load_best_model_at_end=False,
+        save_steps=200,
+        save_total_limit=1,
+        load_best_model_at_end=True,
         report_to="tensorboard",
         disable_tqdm=True,
         remove_unused_columns=False,
         local_rank=local_rank,
-        warmup_steps=warmup_steps,
     )
 
     logger.info("Instantiating Trainer")
@@ -286,24 +258,14 @@ def train(
 
 
 @click.command()
-@click.option("--input-model", type=str, help="Input model to fine tune", default=DEFAULT_INPUT_MODEL)
 @click.option("--local-output-dir", type=str, help="Write directly to this local path", required=True)
 @click.option("--dbfs-output-dir", type=str, help="Sync data to this path on DBFS")
 @click.option("--epochs", type=int, default=3, help="Number of epochs to train for.")
 @click.option("--per-device-train-batch-size", type=int, default=8, help="Batch size to use for training.")
 @click.option("--per-device-eval-batch-size", type=int, default=8, help="Batch size to use for evaluation.")
-@click.option(
-    "--test-size", type=int, default=1000, help="Number of test records for evaluation, or ratio of test records."
-)
-@click.option("--warmup-steps", type=int, default=None, help="Number of steps to warm up to learning rate")
-@click.option("--logging-steps", type=int, default=10, help="How often to log")
-@click.option("--eval-steps", type=int, default=50, help="How often to run evaluation on test records")
-@click.option("--save-steps", type=int, default=400, help="How often to checkpoint the model")
-@click.option("--save-total-limit", type=int, default=10, help="Maximum number of checkpoints to keep on disk")
 @click.option("--lr", type=float, default=1e-5, help="Learning rate to use for training.")
 @click.option("--seed", type=int, default=DEFAULT_SEED, help="Seed to use for training.")
 @click.option("--deepspeed", type=str, default=None, help="Path to deepspeed config file.")
-@click.option("--training-dataset", type=str, default=DEFAULT_TRAINING_DATASET, help="Path to dataset for training")
 @click.option(
     "--gradient-checkpointing/--no-gradient-checkpointing",
     is_flag=True,
