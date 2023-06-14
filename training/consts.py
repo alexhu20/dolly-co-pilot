@@ -2,6 +2,11 @@ import os
 # DEFAULT_TRAINING_DATASET_FILE = os.environ['DATASET_FILE_PATH']
 # DEFAULT_TRAINING_DATASET = "tatsu-lab/alpaca"
 # DEFAULT_INPUT_MODEL = os.environ['MODEL_PATH']
+
+# DEFAULT_TRAINING_DATASET_FILE = "data\\fake_training_data.csv"
+# DEFAULT_TRAINING_DATASET = "tatsu-lab/alpaca"
+# DEFAULT_INPUT_MODEL = "run_training_qna_model.py"
+
 END_KEY = "### End"
 INSTRUCTION_KEY = "### Instruction:"
 INTRO_BLURB = (
